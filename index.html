@@ -72,10 +72,112 @@
             font-weight: bold;
             color: #2196F3;
             background-color: #e3f2fd;
-            padding: 10px;
-            margin: 10px 0;
+            padding: 15px;
+            margin: 15px 0 10px 0;
             border-radius: 8px;
             border: 2px solid #2196F3;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .month-separator:hover {
+            background-color: #bbdefb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+        }
+
+        .month-separator .toggle-icon {
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        .month-separator.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+                margin: 10px;
+            }
+
+            .date-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 6px;
+            }
+
+            .date-option {
+                padding: 8px;
+                font-size: 14px;
+            }
+
+            .month-separator {
+                padding: 12px;
+                font-size: 16px;
+            }
+
+            button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+                margin: 5px;
+            }
+
+            .date-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 4px;
+            }
+
+            .date-option {
+                padding: 6px;
+                font-size: 12px;
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .date-option input[type="checkbox"] {
+                margin-right: 0;
+                margin-bottom: 4px;
+            }
+
+            .month-separator {
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            button {
+                padding: 6px 12px;
+                font-size: 12px;
+                margin: 3px;
+            }
+
+            .person-card {
+                padding: 10px;
+            }
+
+            .date-tag {
+                padding: 3px 6px;
+                font-size: 12px;
+                margin: 1px;
+            }
         }
 
         .date-option {
@@ -231,6 +333,10 @@
             </div>
             <div class="form-group">
                 <label>選擇您有空的日期 (10月-11月): <span class="weekday-label">🟠 週末 📅 平日</span></label>
+                <div style="margin-bottom: 10px;">
+                    <button type="button" onclick="toggleAllMonths(true)" style="background-color: #4CAF50; font-size: 12px; padding: 5px 10px;">📂 全部展開</button>
+                    <button type="button" onclick="toggleAllMonths(false)" style="background-color: #ff9800; font-size: 12px; padding: 5px 10px;">📁 全部收合</button>
+                </div>
                 <div class="date-grid" id="date-grid"></div>
             </div>
             <button onclick="submitPerson()">✅ 提交我的有空時間</button>
@@ -342,14 +448,50 @@
                 const dateMonth = dateInfo.month; // 直接使用標記的月份
                 if (currentMonth !== dateMonth) {
                     currentMonth = dateMonth;
+                    
+                    // 創建月份分隔線
                     const monthSeparator = document.createElement('div');
                     monthSeparator.className = 'month-separator';
-                    monthSeparator.innerHTML = `📅 ${dateMonth}月`;
+                    monthSeparator.dataset.month = dateMonth;
+                    monthSeparator.innerHTML = `
+                        <span>📅 ${dateMonth}月</span>
+                        <span class="toggle-icon">🔽</span>
+                    `;
+                    
+                    // 添加點擊事件來切換展開/收合
+                    monthSeparator.addEventListener('click', function() {
+                        const month = this.dataset.month;
+                        const dateOptions = document.querySelectorAll(`.date-option[data-month="${month}"]`);
+                        const isCollapsed = this.classList.contains('collapsed');
+                        
+                        if (isCollapsed) {
+                            // 展開
+                            dateOptions.forEach(option => option.style.display = 'flex');
+                            this.classList.remove('collapsed');
+                            this.querySelector('.toggle-icon').textContent = '🔽';
+                            saveMonthState(month, true);
+                        } else {
+                            // 收合
+                            dateOptions.forEach(option => option.style.display = 'none');
+                            this.classList.add('collapsed');
+                            this.querySelector('.toggle-icon').textContent = '▶️';
+                            saveMonthState(month, false);
+                        }
+                    });
+                    
                     dateGrid.appendChild(monthSeparator);
+                    
+                    // 載入保存的展開狀態
+                    const savedState = loadMonthState(dateMonth);
+                    if (savedState === false) {
+                        monthSeparator.classList.add('collapsed');
+                        monthSeparator.querySelector('.toggle-icon').textContent = '▶️';
+                    }
                 }
 
                 const dateOption = document.createElement('div');
                 dateOption.className = `date-option ${dateInfo.isWeekend ? 'weekend' : ''}`;
+                dateOption.dataset.month = dateInfo.month; // 添加月份標記
 
                 dateOption.innerHTML = `
                     <input type="checkbox" id="date-${dateInfo.date}" value="${dateInfo.date}">
@@ -367,7 +509,60 @@
                     this.classList.toggle('selected', this.querySelector('input[type="checkbox"]').checked);
                 });
 
+                // 檢查是否需要隱藏（如果該月份是收合狀態）
+                const savedState = loadMonthState(dateInfo.month);
+                if (savedState === false) {
+                    dateOption.style.display = 'none';
+                }
+
                 dateGrid.appendChild(dateOption);
+            });
+        }
+
+        // 保存月份展開狀態
+        function saveMonthState(month, isExpanded) {
+            try {
+                const monthStates = JSON.parse(localStorage.getItem('monthStates') || '{}');
+                monthStates[month] = isExpanded;
+                localStorage.setItem('monthStates', JSON.stringify(monthStates));
+            } catch (error) {
+                console.error('保存月份狀態失敗:', error);
+            }
+        }
+
+        // 載入月份展開狀態
+        function loadMonthState(month) {
+            try {
+                const monthStates = JSON.parse(localStorage.getItem('monthStates') || '{}');
+                return monthStates[month] !== undefined ? monthStates[month] : true; // 預設展開
+            } catch (error) {
+                console.error('載入月份狀態失敗:', error);
+                return true; // 預設展開
+            }
+        }
+
+        // 切換所有月份的展開/收合狀態
+        function toggleAllMonths(expand) {
+            const monthSeparators = document.querySelectorAll('.month-separator');
+            
+            monthSeparators.forEach(separator => {
+                const month = separator.dataset.month;
+                const dateOptions = document.querySelectorAll(`.date-option[data-month="${month}"]`);
+                
+                if (expand) {
+                    // 展開
+                    dateOptions.forEach(option => option.style.display = 'flex');
+                    separator.classList.remove('collapsed');
+                    separator.querySelector('.toggle-icon').textContent = '🔽';
+                } else {
+                    // 收合
+                    dateOptions.forEach(option => option.style.display = 'none');
+                    separator.classList.add('collapsed');
+                    separator.querySelector('.toggle-icon').textContent = '▶️';
+                }
+                
+                // 保存狀態
+                saveMonthState(month, expand);
             });
         }
 
