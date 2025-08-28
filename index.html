@@ -66,6 +66,18 @@
             margin-top: 10px;
         }
 
+        .month-separator {
+            grid-column: 1 / -1;
+            text-align: center;
+            font-weight: bold;
+            color: #2196F3;
+            background-color: #e3f2fd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 2px solid #2196F3;
+        }
+
         .date-option {
             display: flex;
             align-items: center;
@@ -218,7 +230,7 @@
                 <input type="text" id="person-name" placeholder="請輸入您的姓名">
             </div>
             <div class="form-group">
-                <label>選擇您有空的日期 (10月全月): <span class="weekday-label">🟠 週末 📅 平日</span></label>
+                <label>選擇您有空的日期 (10月-11月): <span class="weekday-label">🟠 週末 📅 平日</span></label>
                 <div class="date-grid" id="date-grid"></div>
             </div>
             <button onclick="submitPerson()">✅ 提交我的有空時間</button>
@@ -266,8 +278,8 @@
             }
         }
 
-        // 生成10月的所有日期
-        function generateOctoberDates() {
+        // 生成10月和11月的所有日期
+        function generateOctoberAndNovemberDates() {
             const year = new Date().getFullYear();
             const allDates = [];
 
@@ -288,7 +300,30 @@
                     date: dateStr,
                     display: `${year}/10/${day.toString().padStart(2, '0')} (${weekdayName})`,
                     isWeekend: isWeekend,
-                    dayOfWeek: dayOfWeek
+                    dayOfWeek: dayOfWeek,
+                    month: 10 // 直接標記月份
+                });
+            }
+
+            // 11月有30天
+            for (let day = 1; day <= 30; day++) {
+                const date = new Date(year, 10, day); // 10代表11月 (0-based)
+                const dayOfWeek = date.getDay();
+                const dateStr = date.toISOString().split('T')[0];
+
+                // 週名對應
+                const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+                const weekdayName = weekdays[dayOfWeek];
+
+                // 判斷是否為週末
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+                allDates.push({
+                    date: dateStr,
+                    display: `${year}/11/${day.toString().padStart(2, '0')} (${weekdayName})`,
+                    isWeekend: isWeekend,
+                    dayOfWeek: dayOfWeek,
+                    month: 11 // 直接標記月份
                 });
             }
 
@@ -298,9 +333,21 @@
         // 初始化日期選項
         function initializeDateOptions() {
             const dateGrid = document.getElementById('date-grid');
-            const allDates = generateOctoberDates();
+            const allDates = generateOctoberAndNovemberDates();
+
+            let currentMonth = null;
 
             allDates.forEach(dateInfo => {
+                // 檢查是否需要加入月份分隔線
+                const dateMonth = dateInfo.month; // 直接使用標記的月份
+                if (currentMonth !== dateMonth) {
+                    currentMonth = dateMonth;
+                    const monthSeparator = document.createElement('div');
+                    monthSeparator.className = 'month-separator';
+                    monthSeparator.innerHTML = `📅 ${dateMonth}月`;
+                    dateGrid.appendChild(monthSeparator);
+                }
+
                 const dateOption = document.createElement('div');
                 dateOption.className = `date-option ${dateInfo.isWeekend ? 'weekend' : ''}`;
 
